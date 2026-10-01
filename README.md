@@ -1,39 +1,121 @@
 # Dev_skill
 
-Claude Code, Codex ve Orca üzerinde kontrollü geliştirme orkestrasyonu için dört skill içerir:
+Dev_skill; Orca, Claude Code ve Codex ile plan tabanlı geliştirme görevlerini kontrollü şekilde yönetmek için hazırlanmış bir skill paketidir.
 
-- `dev-skill-orchestrator`: plan doğrulama, puanlama, routing, worktree ve kullanıcı kapıları
-- `dev-skill-developer`: kapsamla sınırlı geliştirme
-- `dev-skill-tester`: salt-okunur test ve kanıt raporu
-- `dev-skill-reviewer`: keşif, hata teşhisi ve final review
+Sistem planları doğrular, görevin zorluk ve risk seviyesini belirler, uygun agent rollerini yönlendirir, test ve review sonuçlarını takip eder. Orca; worktree, terminal, session ve izlenebilirlik katmanı olarak kullanılmaya devam eder.
+
+## İçerdiği skill'ler
+
+- `dev-skill-orchestrator`: plan doğrulama, puanlama, model routing, worktree yönetimi ve kullanıcı onay kapıları
+- `dev-skill-developer`: kendisine verilen kapsam içinde minimum kod değişikliğini yapar
+- `dev-skill-tester`: kodu değiştirmeden testleri çalıştırır ve kanıt raporlar
+- `dev-skill-reviewer`: kod keşfi, hata teşhisi ve final review gerçekleştirir
+
+## Nasıl çalışır?
+
+1. Kullanıcı görev adını, plan klasörünü ve varsa ClickUp veya Flowdo görevini verir.
+2. Orchestrator yerel planları görev aracıyla karşılaştırır.
+3. Her faz için zorluk ve risk puanı oluşturulur.
+4. Her görev için ayrı branch ve Orca worktree hazırlanır.
+5. Developer yalnızca kendisine verilen kapsamı geliştirir.
+6. Tester testleri çalıştırır ve sonucu manager'a raporlar.
+7. Hata varsa reviewer sebebi inceler ve developer'a düzeltme görevi verilir.
+8. Aynı fazda en fazla üç düzeltme denemesi yapılır.
+9. Başarılı geliştirme cross-model review sonrasında kullanıcı onayına sunulur.
+10. Kullanıcı açıkça izin vermeden commit atılmaz; agent hiçbir zaman merge yapmaz.
+
+Tek aktif görevde orchestrator aynı zamanda task manager rolünü üstlenir. Aynı konuşmada ikinci görev açılırsa orchestrator yalnızca koordinatör olur ve her görev için ayrı task manager ile worktree kullanılır.
+
+## Gereksinimler
+
+- Windows PowerShell 5.1 veya PowerShell 7+
+- Git
+- GitHub CLI (`gh`)
+- GitHub CLI oturumu: `gh auth login`
+- Orca
+- Claude Code
+- Codex CLI
 
 ## Kurulum
 
-GitHub deposu yayınlandıktan sonra tek PowerShell komutu kullanılacaktır:
+Depo private olduğu için önce GitHub CLI ile klonlanmalıdır:
 
 ```powershell
-irm https://raw.githubusercontent.com/alitasbas07/Dev_skill/main/Install-DevSkill.ps1 | iex
-```
-
-Yerel kaynaktan kurulum:
-
-```powershell
+gh repo clone alitasbas07/Dev_skill
+cd Dev_skill
 .\Install-DevSkill.ps1 -SourcePath .
 ```
 
-Kurucu ana kopyayı `%USERPROFILE%\.agents\skills` altında tutar. Claude ve Codex skill klasörlerine junction oluşturur. Var olan aynı adlı skill'ler silinmez; tarihli yedeğe taşınır.
+Kurucu önce kurulum kapsamını sorar:
+
+- `Global`: skill'ler bilgisayardaki tüm projelerde kullanılabilir.
+- `Project`: Windows klasör seçim ekranı açılır; seçilen projeye kurulur.
+
+Global kurulum:
+
+- skill'lerin ana kopyasını `%USERPROFILE%\.agents\skills` altında tutar;
+- Claude için `%USERPROFILE%\.claude\skills` bağlantılarını oluşturur;
+- Codex için `%USERPROFILE%\.codex\skills` bağlantılarını oluşturur;
+- mevcut aynı adlı skill'leri silmeden tarihli yedeğe taşır.
+
+Proje kurulumu:
+
+- `<proje>\.agents\skills` klasörüne Orca ve ortak agent skill'lerini kopyalar;
+- `<proje>\.claude\skills` klasörüne Claude Code skill'lerini kopyalar;
+- `<proje>\.codex\skills` klasörüne Codex skill'lerini kopyalar;
+- gerçek dosyalar kullandığı için bu klasörler istenirse Git'e eklenip ekiple paylaşılabilir.
+
+Kurulumu soru sormadan çalıştırmak için:
+
+```powershell
+.\Install-DevSkill.ps1 -SourcePath . -Scope Global
+.\Install-DevSkill.ps1 -SourcePath . -Scope Project -ProjectPath "C:\projeler\uygulama"
+```
+
+Kurulumdan sonra Orca, Claude Code ve Codex oturumlarını yeniden başlatın.
+
+## Kullanım örneği
+
+```text
+Kural bazlı ödeme geçidi geliştirmesi
+C:\proje\.todo\kural-bazli-odeme-gecidi
+içindeki planları ve ClickUp karşılığını doğrula, geliştirmeye başla.
+```
+
+Orchestrator kullanıcı cevaplarına her zaman görev adıyla başlar:
+
+```text
+Görev: Kural bazlı ödeme geçidi
+```
+
+## Güncelleme
+
+```powershell
+git pull
+.\Install-DevSkill.ps1 -SourcePath .
+```
 
 ## Doğrulama
 
+Skill yapısını ve PowerShell dosyalarını kontrol etmek için:
+
 ```powershell
 .\Validate-DevSkill.ps1
+```
+
+Kurucuyu gerçek kullanıcı skill klasörlerine dokunmadan izole ortamda test etmek için:
+
+```powershell
 .\Test-DevSkill.ps1
 ```
 
-## Güvenlik sınırları
+## Temel kurallar
 
-- Agent commit veya merge yapmaz.
-- Commit yalnızca kullanıcı açıkça izin verirse yapılabilir.
-- Merge hiçbir zaman agent tarafından yapılmaz.
-- Aynı hata için en fazla üç düzeltme denemesi vardır.
+- Bir görev, bir branch ve bir worktree kullanır.
+- Agent commit için kullanıcı onayı bekler.
+- Agent hiçbir zaman merge yapmaz.
+- Plan dışı kapsam eklenmez.
+- Aynı hata için en fazla üç düzeltme denemesi yapılır.
 - Kritik advisor modelleri kullanıcı onayı olmadan kullanılmaz.
+- Test, geliştirme ve review kanıtları ayrı raporlanır.
+- Runtime logları proje reposuna yazılmaz.
