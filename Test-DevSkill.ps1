@@ -26,10 +26,15 @@ foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-s
 
 $projectRoot = Join-Path $testRoot "sample-project"
 New-Item -ItemType Directory -Path $projectRoot | Out-Null
+$originalProcessDirectory = [Environment]::CurrentDirectory
 Push-Location $repositoryRoot
 try {
+    # Windows PowerShell can keep its process directory at System32 after Set-Location.
+    # This verifies that a relative SourcePath follows the PowerShell location instead.
+    [Environment]::CurrentDirectory = $env:SystemRoot
     & (Join-Path $repositoryRoot "Install-DevSkill.ps1") -SourcePath "." -Scope Project -ProjectPath $projectRoot
 } finally {
+    [Environment]::CurrentDirectory = $originalProcessDirectory
     Pop-Location
 }
 foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-skill-tester", "dev-skill-reviewer")) {

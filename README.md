@@ -49,7 +49,7 @@ cd Dev_skill
 Kurucu önce kurulum kapsamını sorar:
 
 - `Global`: skill'ler bilgisayardaki tüm projelerde kullanılabilir.
-- `Project`: Windows klasör seçim ekranı açılır; seçilen projeye kurulur.
+- `Project`: Windows Explorer tarzı klasör seçim ekranı açılır; seçilen projeye kurulur.
 
 Global kurulum:
 

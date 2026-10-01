@@ -17,7 +17,7 @@ $temporaryDirectory = $null
 
 # Resolve relative source paths before a folder picker can change the process directory.
 if ($SourcePath) {
-    $SourcePath = [IO.Path]::GetFullPath($SourcePath)
+    $SourcePath = (Resolve-Path -LiteralPath $SourcePath -ErrorAction Stop).Path
 }
 
 function Assert-SafeRoot {
@@ -46,20 +46,35 @@ function New-SkillLink {
 }
 
 function Select-ProjectFolder {
+    param([string]$InitialDirectory)
+
     if (-not ($IsWindows -or $env:OS -eq "Windows_NT")) {
         return Read-Host "Enter the full project directory path"
     }
 
     try {
         Add-Type -AssemblyName System.Windows.Forms
-        $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $dialog.Description = "Select the project where Dev_skill will be installed"
-        $dialog.ShowNewFolderButton = $false
+        $dialog = New-Object System.Windows.Forms.OpenFileDialog
+        $dialog.Title = "Select the project where Dev_skill will be installed"
+        $dialog.Filter = "Project folder|*.folder"
+        $dialog.FileName = "Select this folder"
+        $dialog.CheckFileExists = $false
+        $dialog.CheckPathExists = $true
+        $dialog.ValidateNames = $false
+        $dialog.Multiselect = $false
+        $dialog.RestoreDirectory = $true
+        if ($InitialDirectory -and (Test-Path -LiteralPath $InitialDirectory -PathType Container)) {
+            $dialog.InitialDirectory = $InitialDirectory
+        }
         $owner = New-Object System.Windows.Forms.Form
         $owner.TopMost = $true
         $owner.ShowInTaskbar = $false
         $result = $dialog.ShowDialog($owner)
-        $selectedPath = $dialog.SelectedPath
+        $selectedPath = if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            Split-Path -Parent $dialog.FileName
+        } else {
+            $null
+        }
         $owner.Dispose()
         $dialog.Dispose()
         if ($result -ne [System.Windows.Forms.DialogResult]::OK -or -not $selectedPath) {
@@ -84,7 +99,10 @@ try {
     }
 
     if ($Scope -eq "Project") {
-        if (-not $ProjectPath) { $ProjectPath = Select-ProjectFolder }
+        if (-not $ProjectPath) {
+            $initialDirectory = if ($SourcePath) { Split-Path -Parent $SourcePath } else { (Get-Location).Path }
+            $ProjectPath = Select-ProjectFolder -InitialDirectory $initialDirectory
+        }
         if (-not $ProjectPath -or -not (Test-Path -LiteralPath $ProjectPath -PathType Container)) {
             throw "Project directory does not exist: $ProjectPath"
         }
