@@ -176,10 +176,21 @@ try {
         }
     }
 
+    $dashboardSource = Join-Path $sourceRoot 'dashboard'
+    if (Test-Path -LiteralPath $dashboardSource -PathType Container) {
+        $dashboardRoots = @($CanonicalRoot)
+        if ($Scope -eq 'Project') { $dashboardRoots += @($ClaudeRoot, $CodexRoot) }
+        foreach ($root in $dashboardRoots) {
+            $destination = Join-Path (Join-Path $root 'dev-skill-orchestrator') 'dashboard'
+            Copy-Item -LiteralPath $dashboardSource -Destination $destination -Recurse
+        }
+    }
+
     Write-Host "Dev_skill installed successfully." -ForegroundColor Green
     Write-Host "Scope: $Scope"
     if ($Scope -eq "Project") { Write-Host "Project: $ProjectPath" }
     Write-Host "Skills root: $CanonicalRoot"
+    Write-Host ('Dashboard command: & "' + (Join-Path $CanonicalRoot 'dev-skill-orchestrator\dashboard\Build-Dashboard.ps1') + '" -Open')
     Write-Host "Restart Claude Code, Codex and Orca sessions to reload skills."
 } finally {
     if ($temporaryDirectory -and (Test-Path -LiteralPath $temporaryDirectory)) {

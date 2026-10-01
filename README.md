@@ -112,6 +112,34 @@ Kurucuyu gerçek kullanıcı skill klasörlerine dokunmadan izole ortamda test e
 .\Test-DevSkill.ps1
 ```
 
+## Log ve benchmark ekranı
+
+Dashboard sunucu veya ek paket gerektirmeyen tek HTML dosyasıdır. Task listesi, durum filtresi, agent olayları, test/review raporları ve Baseline/Dev_skill karşılaştırmasını gösterir.
+
+Global kurulumdan sonra:
+
+```powershell
+& "$HOME\.agents\skills\dev-skill-orchestrator\dashboard\Build-Dashboard.ps1" -Open
+```
+
+Proje bazlı kurulumdan sonra proje klasöründe:
+
+```powershell
+.\.agents\skills\dev-skill-orchestrator\dashboard\Build-Dashboard.ps1 -Open
+```
+
+Repo üzerinden çalıştırmak için:
+
+```powershell
+.\dashboard\Build-Dashboard.ps1 -Open
+```
+
+Tüm kurulumlar varsayılan olarak `$HOME\.agent-orchestrator\runs` altındaki `events.jsonl` ve `summary.json` dosyalarını, `benchmarks` altındaki JSON sonuçlarını okur. Çıktı `$HOME\.agent-orchestrator\dashboard\output\dashboard.html` dosyasına yazılır. `-DataRoot` ve `-OutputPath` ile farklı konumlar seçilebilir. Yeni logları görmek için komutu yeniden çalıştırın.
+
+Token, süre ve kalite puanı kendiliğinden ölçülmez; doğrulanmış değerler loglara kaydedildiğinde görünür. Eksik değerler “Veri yok” olarak gösterilir. Token hesabına bütün worker'lar dahil edilmelidir. Benchmark kayıt biçimi için [veri sözleşmesine](dashboard/data-contract.md) bakın.
+
+Dashboard kişisel çalışma verileri içerebilir; HTML çıktısını paylaşmadan önce içeriğini kontrol edin.
+
 ## Temel kurallar
 
 - Bir görev, bir branch ve bir worktree kullanır.

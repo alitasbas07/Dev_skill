@@ -45,3 +45,13 @@ foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-s
 }
 
 Write-Host "Global and project installer validation passed for all four skills." -ForegroundColor Green
+
+foreach ($root in @($agentsRoot, $claudeRoot, $codexRoot)) {
+    $builder = Join-Path $root 'dev-skill-orchestrator\dashboard\Build-Dashboard.ps1'
+    if (-not (Test-Path -LiteralPath $builder)) { throw "Missing installed dashboard: $builder" }
+}
+foreach ($relativeRoot in @('.agents\skills','.claude\skills','.codex\skills')) {
+    $builder = Join-Path (Join-Path $projectRoot $relativeRoot) 'dev-skill-orchestrator\dashboard\Build-Dashboard.ps1'
+    if (-not (Test-Path -LiteralPath $builder)) { throw "Missing project dashboard: $builder" }
+}
+& (Join-Path $repositoryRoot 'dashboard\Test-Dashboard.ps1')

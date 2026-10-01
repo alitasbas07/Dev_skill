@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Dev_skill · Çalışma kayıtları</title>
+<style>
+:root{color-scheme:dark;--bg:#111214;--panel:#1b1d21;--line:#34373c;--text:#edf0f3;--muted:#a4abb5;--good:#94d8b0;--bad:#ffb0ab}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}main{max-width:1440px;margin:auto;padding:32px}header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:28px}h1{font-size:26px;margin:0}h2{font-size:19px;margin:0 0 16px}h3{font-size:15px}p{margin:8px 0}.muted{color:var(--muted)}.small{font-size:13px}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}.metric{background:var(--panel);padding:18px;border-radius:8px}.value{font-size:28px;font-variant-numeric:tabular-nums}.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px}.panel{background:var(--panel);padding:20px;border-radius:8px;margin-bottom:24px;min-width:0}input,select,button{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);padding:9px 12px;border-radius:5px}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--good);outline-offset:2px}.filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}.filters input{min-width:0;flex:1}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:12px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:500}td{overflow-wrap:anywhere}td.num{text-align:right;font-variant-numeric:tabular-nums}.badge{display:inline-block;padding:3px 7px;background:#2b2e34;border-radius:4px;font-size:12px}.good{color:var(--good)}.bad{color:var(--bad)}.empty{padding:24px 0;color:var(--muted)}.timeline{list-style:none;padding:0}.timeline li{border-left:2px solid var(--line);padding:0 0 20px 18px;margin-left:4px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:var(--bg);padding:12px;max-height:280px;overflow:auto}.comparison{margin-bottom:24px}.note{border-left:3px solid var(--line);padding:8px 12px;margin:12px 0}footer{color:var(--muted);font-size:13px;padding:12px 0}dl{display:grid;grid-template-columns:110px 1fr;gap:8px}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}@media(max-width:1000px){.layout{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(3,1fr)}}@media(max-width:600px){main{padding:16px}header{display:block}.metrics{grid-template-columns:repeat(2,1fr)}.panel{padding:14px}h1{font-size:23px}}
+</style>
+</head>
+<body>
+<main>
+<header><div><p class="muted small">DEV_SKILL / LOCAL OBSERVABILITY</p><h1>Çalışma kayıtları</h1><p class="muted">Task akışı, test kanıtları ve benchmark sonuçları.</p></div><div id="generated" class="muted small"></div></header>
+<div id="warnings" role="alert"></div>
+<section id="metrics" class="metrics" aria-label="Genel durum"></section>
+<div class="layout">
+<section class="panel"><h2>Task listesi</h2><div class="filters"><input id="search" type="search" aria-label="Task ara" placeholder="Task veya run ara"><select id="state" aria-label="Durum filtresi"><option value="">Tüm durumlar</option></select></div><div class="scroll"><table><thead><tr><th>Görev / Run</th><th>Durum</th><th>Model / Efor</th><th>Zorluk / Risk</th><th>Detay</th></tr></thead><tbody id="tasks"></tbody></table></div><p id="no-tasks" class="empty" hidden>Henüz çalışma kaydı yok. Loglar eklendikten sonra dashboardu yeniden oluşturun.</p></section>
+<section class="panel" aria-live="polite"><h2 id="detail-title">Task detayı</h2><div id="detail" class="empty">İncelemek için bir task seçin.</div></section>
+</div>
+<section class="panel"><h2>Benchmark · Baseline / Dev_skill</h2><p class="muted small">Her case ve tekrar ayrı karşılaştırılır. Eksik ölçümler sıfır kabul edilmez.</p><div id="benchmarks"></div></section>
+<footer>Bu ekran oluşturulduğu anın kaydıdır. Yeni loglar için Build-Dashboard.ps1 komutunu yeniden çalıştırın. Veri tarayıcı dışına gönderilmez.</footer>
+</main>
+<script id="dashboard-data" type="text/plain">__DASHBOARD_DATA_BASE64__</script>
+<script>
+'use strict';
+const bytes=Uint8Array.from(atob(document.getElementById('dashboard-data').textContent.trim()),c=>c.charCodeAt(0));
+const data=JSON.parse(new TextDecoder().decode(bytes));
+const el=id=>document.getElementById(id);
+const fmt=v=>v===null||v===undefined||v===''?'Veri yok':String(v);
+const number=v=>typeof v==='number'&&Number.isFinite(v);
+function node(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
+function date(value){const d=new Date(value);return value&&!Number.isNaN(d.valueOf())?d.toLocaleString('tr-TR'):fmt(value);}
+const runs=(data.runs||[]).map(r=>{const s=r.summary||{},events=r.events||[],last=events[events.length-1]||{};return {...r,events,summary:s,task_id:s.task_id||last.task_id||r.run_id,task_name:s.task_name||last.task_name||s.task_id||last.task_id||r.run_id,state:s.state||last.state||'UNKNOWN',model:s.model||last.model,effort:s.effort||last.effort,difficulty:s.difficulty??last.difficulty,risk:s.risk??last.risk};});
+el('generated').textContent='Oluşturuldu: '+date(data.generated_at);
+for(const warning of data.warnings||[])el('warnings').append(node('p',warning,'note bad'));
+const complete=runs.filter(r=>r.state==='COMPLETED').length;
+const stopped=runs.filter(r=>['STOPPED','BLOCKED'].includes(r.state)).length;
+const tokens=runs.map(r=>r.summary.metrics?.total_tokens).filter(number);
+const durations=runs.map(r=>r.summary.metrics?.duration_seconds).filter(number);
+const stats=[['Toplam çalışma',runs.length,'Her satır bir run'],['Tamamlanan / Duran',complete+' / '+stopped,'COMPLETED / STOPPED + BLOCKED'],['Toplam token',tokens.length?tokens.reduce((a,b)=>a+b,0).toLocaleString('tr-TR'):'Veri yok',tokens.length+'/'+runs.length+' run ölçüldü'],['Ortalama süre',durations.length?(durations.reduce((a,b)=>a+b,0)/durations.length).toFixed(1)+' sn':'Veri yok',durations.length+'/'+runs.length+' run ölçüldü'],['Düzeltme olayı',runs.reduce((n,r)=>n+r.events.filter(e=>e.event==='correction_started').length,0),'correction_started kayıtları']];
+for(const [label,value,note]of stats){const box=node('div',undefined,'metric');box.append(node('div',label,'muted small'),node('div',value,'value'),node('div',note,'muted small'));el('metrics').append(box);}
+for(const state of [...new Set(runs.map(r=>r.state))].sort()){const option=node('option',state);option.value=state;el('state').append(option);}
+function renderTasks(){const query=el('search').value.toLocaleLowerCase('tr-TR'),state=el('state').value;const selected=runs.filter(r=>(!state||state===r.state)&&[r.task_name,r.run_id].join(' ').toLocaleLowerCase('tr-TR').includes(query));el('tasks').replaceChildren();el('no-tasks').hidden=selected.length>0;for(const r of selected){const row=node('tr'),name=node('td');name.append(node('div',r.task_name),node('div',r.run_id,'muted small'));row.append(name,node('td',r.state),node('td',fmt(r.model)+' / '+fmt(r.effort)),node('td',fmt(r.difficulty)+' / '+fmt(r.risk)));const cell=node('td'),button=node('button','İncele');button.type='button';button.addEventListener('click',()=>renderDetail(r));cell.append(button);row.append(cell);el('tasks').append(row);}}
+function renderDetail(r){el('detail-title').textContent=r.task_name;const box=el('detail');box.className='';box.replaceChildren();const meta=node('dl');for(const [k,v]of [['Run',r.run_id],['Durum',r.state],['Test',r.summary.test_status],['Review',r.summary.review_status],['Token',r.summary.metrics?.total_tokens],['Süre (sn)',r.summary.metrics?.duration_seconds]])meta.append(node('dt',k),node('dd',fmt(v)));box.append(meta);const summary=node('details');summary.append(node('summary','Özet ve ölçümler'),node('pre',JSON.stringify(r.summary,null,2)));box.append(summary,node('h3','Agent zaman çizelgesi'));const timeline=node('ol',undefined,'timeline');for(const e of r.events){const item=node('li');item.append(node('div',fmt(e.event)+' · '+fmt(e.actor), 'small'),node('div',date(e.timestamp)+' · '+fmt(e.state),'muted small'));const details=node('details');details.append(node('summary','Rapor ve kanıt'),node('pre',JSON.stringify(e,null,2)));item.append(details);timeline.append(item);}if(!r.events.length)timeline.append(node('li','Olay kaydı yok.'));box.append(timeline);}
+const comparisons=new Map();for(const b of data.benchmarks||[]){const key=JSON.stringify([b.case_id,b.repeat??1]);if(!comparisons.has(key))comparisons.set(key,[]);comparisons.get(key).push(b);}
+const fields=[['Toplam token','total_tokens'],['Süre (sn)','duration_seconds'],['Kod kalitesi / 100','quality_score'],['Retry','retry_count'],['Scope ihlali','scope_violations'],['Review bulgusu','review_findings'],['Kullanıcı müdahalesi','user_interventions'],['Test sonucu','test_status']];
+if(!comparisons.size)el('benchmarks').append(node('p','Henüz benchmark kaydı yok.','empty'));
+for(const group of comparisons.values()){const box=node('div',undefined,'comparison');box.append(node('h3',group[0].case_id+' · Tekrar '+(group[0].repeat??1)));const a=group.filter(r=>r.variant==='baseline'),b=group.filter(r=>r.variant==='devskill');if(a.length>1||b.length>1){box.append(node('p','Aynı case / tekrar için birden fazla sonuç var. Kayıtları düzeltin; otomatik sonuç seçilmedi.','bad'));el('benchmarks').append(box);continue;}const table=node('table'),head=node('thead'),tr=node('tr');for(const title of ['Ölçüm','Baseline','Dev_skill','Fark (Dev_skill − Baseline)'])tr.append(node('th',title));head.append(tr);table.append(head);const body=node('tbody');for(const [label,key]of fields){const av=a[0]?.metrics?.[key],bv=b[0]?.metrics?.[key],row=node('tr');row.append(node('td',label),node('td',fmt(av),'num'),node('td',fmt(bv),'num'),node('td',number(av)&&number(bv)?(bv-av).toLocaleString('tr-TR'):'—','num'));body.append(row);}table.append(body);const wrap=node('div',undefined,'scroll');wrap.append(table);box.append(wrap);for(const result of group){const details=node('details');details.append(node('summary',result.variant+' · Koşullar ve kanıt'),node('pre',JSON.stringify(result,null,2)));box.append(details);}el('benchmarks').append(box);}
+el('search').addEventListener('input',renderTasks);el('state').addEventListener('change',renderTasks);renderTasks();
+</script>
+</body>
+</html>
