@@ -3,6 +3,9 @@ param(
     [string]$SourcePath,
     [string]$Repository = "alitasbas07/Dev_skill",
     [string]$Ref = "main",
+    [ValidateSet("Ask", "Global", "Project")]
+    [string]$Scope = "Ask",
+    [string]$ProjectPath,
     [string]$CanonicalRoot = (Join-Path $HOME ".agents\skills"),
     [string]$ClaudeRoot = (Join-Path $HOME ".claude\skills"),
     [string]$CodexRoot = $(if ($env:CODEX_HOME) { Join-Path $env:CODEX_HOME "skills" } else { Join-Path $HOME ".codex\skills" })
@@ -37,7 +40,55 @@ function New-SkillLink {
     }
 }
 
+function Select-ProjectFolder {
+    if (-not ($IsWindows -or $env:OS -eq "Windows_NT")) {
+        return Read-Host "Enter the full project directory path"
+    }
+
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dialog.Description = "Select the project where Dev_skill will be installed"
+        $dialog.ShowNewFolderButton = $false
+        $owner = New-Object System.Windows.Forms.Form
+        $owner.TopMost = $true
+        $owner.ShowInTaskbar = $false
+        $result = $dialog.ShowDialog($owner)
+        $selectedPath = $dialog.SelectedPath
+        $owner.Dispose()
+        $dialog.Dispose()
+        if ($result -ne [System.Windows.Forms.DialogResult]::OK -or -not $selectedPath) {
+            throw "Project selection was cancelled."
+        }
+        return $selectedPath
+    } catch {
+        Write-Warning "The folder picker could not be opened: $($_.Exception.Message)"
+        return Read-Host "Enter the full project directory path"
+    }
+}
+
 try {
+    if ($Scope -eq "Ask") {
+        Write-Host "Select installation scope:"
+        Write-Host "  1) Global - available in every project"
+        Write-Host "  2) Project - installed only in a selected project"
+        do {
+            $selection = Read-Host "Enter 1 or 2"
+        } until ($selection -in @("1", "2"))
+        $Scope = if ($selection -eq "1") { "Global" } else { "Project" }
+    }
+
+    if ($Scope -eq "Project") {
+        if (-not $ProjectPath) { $ProjectPath = Select-ProjectFolder }
+        if (-not $ProjectPath -or -not (Test-Path -LiteralPath $ProjectPath -PathType Container)) {
+            throw "Project directory does not exist: $ProjectPath"
+        }
+        $ProjectPath = [IO.Path]::GetFullPath($ProjectPath)
+        $CanonicalRoot = Join-Path $ProjectPath ".agents\skills"
+        $ClaudeRoot = Join-Path $ProjectPath ".claude\skills"
+        $CodexRoot = Join-Path $ProjectPath ".codex\skills"
+    }
+
     foreach ($root in @($CanonicalRoot, $ClaudeRoot, $CodexRoot)) {
         Assert-SafeRoot -Path $root
         New-Item -ItemType Directory -Force -Path $root | Out-Null
@@ -65,19 +116,33 @@ try {
     foreach ($skillName in $skillNames) {
         $sourceSkill = Join-Path (Join-Path $sourceRoot "skills") $skillName
         if (-not (Test-Path -LiteralPath (Join-Path $sourceSkill "SKILL.md"))) { throw "Missing skill: $skillName" }
-        $canonicalSkill = Join-Path $CanonicalRoot $skillName
-        Move-ExistingToBackup -Path $canonicalSkill -BackupRoot (Join-Path $backupBase "agents")
-        Copy-Item -LiteralPath $sourceSkill -Destination $canonicalSkill -Recurse
 
-        foreach ($client in @(@{ Root = $ClaudeRoot; Name = "claude" }, @{ Root = $CodexRoot; Name = "codex" })) {
-            $clientSkill = Join-Path $client.Root $skillName
-            Move-ExistingToBackup -Path $clientSkill -BackupRoot (Join-Path $backupBase $client.Name)
-            New-SkillLink -Target $canonicalSkill -Link $clientSkill
+        if ($Scope -eq "Global") {
+            $canonicalSkill = Join-Path $CanonicalRoot $skillName
+            Move-ExistingToBackup -Path $canonicalSkill -BackupRoot (Join-Path $backupBase "agents")
+            Copy-Item -LiteralPath $sourceSkill -Destination $canonicalSkill -Recurse
+            foreach ($client in @(@{ Root = $ClaudeRoot; Name = "claude" }, @{ Root = $CodexRoot; Name = "codex" })) {
+                $clientSkill = Join-Path $client.Root $skillName
+                Move-ExistingToBackup -Path $clientSkill -BackupRoot (Join-Path $backupBase $client.Name)
+                New-SkillLink -Target $canonicalSkill -Link $clientSkill
+            }
+        } else {
+            foreach ($client in @(
+                @{ Root = $CanonicalRoot; Name = "agents" },
+                @{ Root = $ClaudeRoot; Name = "claude" },
+                @{ Root = $CodexRoot; Name = "codex" }
+            )) {
+                $clientSkill = Join-Path $client.Root $skillName
+                Move-ExistingToBackup -Path $clientSkill -BackupRoot (Join-Path $backupBase ("project-" + $client.Name))
+                Copy-Item -LiteralPath $sourceSkill -Destination $clientSkill -Recurse
+            }
         }
     }
 
     Write-Host "Dev_skill installed successfully." -ForegroundColor Green
-    Write-Host "Canonical: $CanonicalRoot"
+    Write-Host "Scope: $Scope"
+    if ($Scope -eq "Project") { Write-Host "Project: $ProjectPath" }
+    Write-Host "Skills root: $CanonicalRoot"
     Write-Host "Restart Claude Code, Codex and Orca sessions to reload skills."
 } finally {
     if ($temporaryDirectory -and (Test-Path -LiteralPath $temporaryDirectory)) {
@@ -88,4 +153,3 @@ try {
         }
     }
 }
-

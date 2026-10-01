@@ -15,7 +15,7 @@ if (Test-Path -LiteralPath $testRoot) {
 $agentsRoot = Join-Path $testRoot "agents"
 $claudeRoot = Join-Path $testRoot "claude"
 $codexRoot = Join-Path $testRoot "codex"
-& (Join-Path $repositoryRoot "Install-DevSkill.ps1") -SourcePath $repositoryRoot -CanonicalRoot $agentsRoot -ClaudeRoot $claudeRoot -CodexRoot $codexRoot
+& (Join-Path $repositoryRoot "Install-DevSkill.ps1") -SourcePath $repositoryRoot -Scope Global -CanonicalRoot $agentsRoot -ClaudeRoot $claudeRoot -CodexRoot $codexRoot
 
 foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-skill-tester", "dev-skill-reviewer")) {
     foreach ($root in @($agentsRoot, $claudeRoot, $codexRoot)) {
@@ -23,4 +23,15 @@ foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-s
         if (-not (Test-Path -LiteralPath $skillFile)) { throw "Validation failed: $skillFile" }
     }
 }
-Write-Host "Installer validation passed for all four skills." -ForegroundColor Green
+
+$projectRoot = Join-Path $testRoot "sample-project"
+New-Item -ItemType Directory -Path $projectRoot | Out-Null
+& (Join-Path $repositoryRoot "Install-DevSkill.ps1") -SourcePath $repositoryRoot -Scope Project -ProjectPath $projectRoot
+foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-skill-tester", "dev-skill-reviewer")) {
+    foreach ($relativeRoot in @(".agents\skills", ".claude\skills", ".codex\skills")) {
+        $skillFile = Join-Path (Join-Path (Join-Path $projectRoot $relativeRoot) $skillName) "SKILL.md"
+        if (-not (Test-Path -LiteralPath $skillFile)) { throw "Project validation failed: $skillFile" }
+    }
+}
+
+Write-Host "Global and project installer validation passed for all four skills." -ForegroundColor Green
