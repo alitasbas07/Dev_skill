@@ -26,7 +26,12 @@ foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-s
 
 $projectRoot = Join-Path $testRoot "sample-project"
 New-Item -ItemType Directory -Path $projectRoot | Out-Null
-& (Join-Path $repositoryRoot "Install-DevSkill.ps1") -SourcePath $repositoryRoot -Scope Project -ProjectPath $projectRoot
+Push-Location $repositoryRoot
+try {
+    & (Join-Path $repositoryRoot "Install-DevSkill.ps1") -SourcePath "." -Scope Project -ProjectPath $projectRoot
+} finally {
+    Pop-Location
+}
 foreach ($skillName in @("dev-skill-orchestrator", "dev-skill-developer", "dev-skill-tester", "dev-skill-reviewer")) {
     foreach ($relativeRoot in @(".agents\skills", ".claude\skills", ".codex\skills")) {
         $skillFile = Join-Path (Join-Path (Join-Path $projectRoot $relativeRoot) $skillName) "SKILL.md"

@@ -15,6 +15,11 @@ $ErrorActionPreference = "Stop"
 $skillNames = @("dev-skill-orchestrator", "dev-skill-developer", "dev-skill-tester", "dev-skill-reviewer")
 $temporaryDirectory = $null
 
+# Resolve relative source paths before a folder picker can change the process directory.
+if ($SourcePath) {
+    $SourcePath = [IO.Path]::GetFullPath($SourcePath)
+}
+
 function Assert-SafeRoot {
     param([Parameter(Mandatory)][string]$Path)
     $resolvedHome = [IO.Path]::GetFullPath($HOME).TrimEnd('\', '/')
@@ -95,7 +100,7 @@ try {
     }
 
     if ($SourcePath) {
-        $sourceRoot = [IO.Path]::GetFullPath($SourcePath)
+        $sourceRoot = $SourcePath
     } else {
         $temporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) ("DevSkill-" + [guid]::NewGuid().ToString("N"))
         New-Item -ItemType Directory -Path $temporaryDirectory | Out-Null
