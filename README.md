@@ -41,7 +41,7 @@ Tek aktif görevde orchestrator aynı zamanda task manager rolünü üstlenir. A
 Depo private olduğu için GitHub CLI oturumunun açık olması gerekir. Kurulum reposunu klonlamadan tek PowerShell komutuyla başlatılır:
 
 ```powershell
-gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq .content | ForEach-Object { & ([scriptblock]::Create([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)))) }
+& ([scriptblock]::Create((gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq '.content | @base64d' | Out-String)))
 ```
 
 Komut kurulum paketini geçici klasöre indirir ve işlem tamamlandığında geçici dosyaları siler. Projenin içine `Dev_skill` repository klasörü eklenmez.
@@ -68,8 +68,8 @@ Proje kurulumu:
 Kurulumu soru sormadan çalıştırmak için:
 
 ```powershell
-$installer = gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq .content
-$script = [scriptblock]::Create([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($installer)))
+$installer = gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq '.content | @base64d' | Out-String
+$script = [scriptblock]::Create($installer)
 & $script -Scope Global
 & $script -Scope Project -ProjectPath "C:\projeler\uygulama"
 ```
@@ -95,7 +95,7 @@ Görev: Kural bazlı ödeme geçidi
 Kurulum komutunu yeniden çalıştırın. Mevcut skill'ler tarihli yedeğe taşınır ve güncel sürüm kurulur:
 
 ```powershell
-gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq .content | ForEach-Object { & ([scriptblock]::Create([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)))) }
+& ([scriptblock]::Create((gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq '.content | @base64d' | Out-String)))
 ```
 
 ## Doğrulama
