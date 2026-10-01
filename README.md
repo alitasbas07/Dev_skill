@@ -38,13 +38,13 @@ Tek aktif görevde orchestrator aynı zamanda task manager rolünü üstlenir. A
 
 ## Kurulum
 
-Depo private olduğu için önce GitHub CLI ile klonlanmalıdır:
+Depo private olduğu için GitHub CLI oturumunun açık olması gerekir. Kurulum reposunu klonlamadan tek PowerShell komutuyla başlatılır:
 
 ```powershell
-gh repo clone alitasbas07/Dev_skill
-cd Dev_skill
-.\Install-DevSkill.ps1 -SourcePath .
+gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq .content | ForEach-Object { & ([scriptblock]::Create([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)))) }
 ```
+
+Komut kurulum paketini geçici klasöre indirir ve işlem tamamlandığında geçici dosyaları siler. Projenin içine `Dev_skill` repository klasörü eklenmez.
 
 Kurucu önce kurulum kapsamını sorar:
 
@@ -68,8 +68,10 @@ Proje kurulumu:
 Kurulumu soru sormadan çalıştırmak için:
 
 ```powershell
-.\Install-DevSkill.ps1 -SourcePath . -Scope Global
-.\Install-DevSkill.ps1 -SourcePath . -Scope Project -ProjectPath "C:\projeler\uygulama"
+$installer = gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq .content
+$script = [scriptblock]::Create([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($installer)))
+& $script -Scope Global
+& $script -Scope Project -ProjectPath "C:\projeler\uygulama"
 ```
 
 Kurulumdan sonra Orca, Claude Code ve Codex oturumlarını yeniden başlatın.
@@ -90,9 +92,10 @@ Görev: Kural bazlı ödeme geçidi
 
 ## Güncelleme
 
+Kurulum komutunu yeniden çalıştırın. Mevcut skill'ler tarihli yedeğe taşınır ve güncel sürüm kurulur:
+
 ```powershell
-git pull
-.\Install-DevSkill.ps1 -SourcePath .
+gh api repos/alitasbas07/Dev_skill/contents/Install-DevSkill.ps1 --jq .content | ForEach-Object { & ([scriptblock]::Create([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)))) }
 ```
 
 ## Doğrulama

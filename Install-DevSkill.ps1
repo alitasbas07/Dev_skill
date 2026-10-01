@@ -120,10 +120,24 @@ try {
     if ($SourcePath) {
         $sourceRoot = $SourcePath
     } else {
+        $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
+        if (-not $ghCommand) {
+            throw "GitHub CLI (gh) is required to install from the private repository."
+        }
+        $githubToken = (& gh auth token 2>$null).Trim()
+        if ($LASTEXITCODE -ne 0 -or -not $githubToken) {
+            throw "GitHub authentication is required. Run: gh auth login"
+        }
         $temporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) ("DevSkill-" + [guid]::NewGuid().ToString("N"))
         New-Item -ItemType Directory -Path $temporaryDirectory | Out-Null
         $archivePath = Join-Path $temporaryDirectory "source.zip"
-        Invoke-WebRequest -Uri "https://codeload.github.com/$Repository/zip/$Ref" -OutFile $archivePath -UseBasicParsing
+        $headers = @{
+            Authorization = "Bearer $githubToken"
+            Accept = "application/vnd.github+json"
+            "X-GitHub-Api-Version" = "2022-11-28"
+        }
+        Invoke-WebRequest -Uri "https://api.github.com/repos/$Repository/zipball/$Ref" -Headers $headers -OutFile $archivePath -UseBasicParsing
+        $githubToken = $null
         Expand-Archive -LiteralPath $archivePath -DestinationPath $temporaryDirectory
         $sourceRoot = Get-ChildItem -LiteralPath $temporaryDirectory -Directory |
             Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "skills") } |
